@@ -1,0 +1,90 @@
+import java.io.StringReader;
+import java.io.StringWriter;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
+public class XMLNamespaceRemover {
+    public static void main(String[] args) {
+        String xml = "<ISOAuthorizationXML>\n"
+                + "    <ISO8583-87 xmlns=\"\">\n"
+                + "        <i000 xmlns=\"\">0210</i000>\n"
+                + "        <i002 xmlns=\"\">6528610000005008</i002>\n"
+                + "        <i003 xmlns=\"\">003000</i003>\n"
+                + "        <i004 xmlns=\"\">0000000100</i004>\n"
+                + "        <i007 xmlns=\"\">0424091137</i007>\n"
+                + "    </ISO8583-87>\n"
+                + "</ISOAuthorizationXML>";
+        
+        String inputXml = xml;
+        String tagToRemoveNamespaces = "ISOAuthorizationXML";
+
+        try {
+            // Remove namespaces from the XML
+            String modifiedXml = removeEmptyNamespaces(inputXml, tagToRemoveNamespaces);
+
+            // Print the modified XML
+            System.out.println(modifiedXml);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String removeEmptyNamespaces(String inputXml, String tagToRemoveNamespaces) throws Exception {
+        // Parse the input XML string
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse(new InputSource(new StringReader(inputXml)));
+
+        // Remove empty namespaces after the specified tag
+        NodeList nodeList = document.getElementsByTagName(tagToRemoveNamespaces);
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Element element = (Element) nodeList.item(i);
+            removeEmptyNamespaces(element);
+        }
+
+        // Prepare the output transformer
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty("indent", "yes");
+
+        // Create a DOMSource from the modified document
+        DOMSource source = new DOMSource(document);
+
+        // Create a StringWriter to hold the XML output
+        StringWriter writer = new StringWriter();
+
+        // Transform the DOMSource to XML and write to the StringWriter
+        transformer.transform(source, new StreamResult(writer));
+
+        // Retrieve the modified XML as a string
+        return writer.toString();
+    }
+
+    private static void removeEmptyNamespaces(Element element) {
+        // Remove empty namespace from the current element
+        Attr attr = element.getAttributeNode("xmlns");
+        if (attr != null && attr.getValue().isEmpty()) {
+            element.removeAttributeNode(attr);
+        }
+
+        // Remove empty namespaces from child elements recursively
+        NodeList childNodes = element.getChildNodes();
+        for (int i = 0; i < childNodes.getLength(); i++) {
+            if (childNodes.item(i) instanceof Element) {
+                Element childElement = (Element) childNodes.item(i);
+                removeEmptyNamespaces(childElement);
+            }
+        }
+    }
+}
